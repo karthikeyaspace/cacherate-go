@@ -6,22 +6,18 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/karthikeyaspace/proxy-go/internal/handlers"
 	"github.com/karthikeyaspace/proxy-go/internal/middleware"
-	"github.com/patrickmn/go-cache"
 )
 
 type APIServer struct {
-	addr  string
-	cache *cache.Cache
+	addr string
 }
 
 func NewAPIServer(addr string) *APIServer {
 	return &APIServer{
-		addr:  addr,
-		cache: cache.New(5*time.Minute, 10*time.Minute),
+		addr: addr,
 	}
 }
 
@@ -32,13 +28,11 @@ var (
 func (s *APIServer) Start() error {
 
 	router := http.NewServeMux()
-	handler := handlers.NewHandler(s.cache)
-
-	cacheMiddleware := middleware.NewCacheMiddleware(s.cache)
+	handler := handlers.NewHandler()
 
 	router.HandleFunc("GET /", handler.HomeHandler)
-	router.HandleFunc("GET /cached-data", cacheMiddleware.Cache(handler.GetData))
-	router.HandleFunc("GET /ratelimit-data", handler.GetData)
+	router.HandleFunc("GET /cached-data", handler.GetDataCached)
+	router.HandleFunc("GET /ratelimit-data", handler.GetDataRatelimited)
 
 	server := &http.Server{
 		Addr:    s.addr,
