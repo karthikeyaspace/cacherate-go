@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/karthikeyaspace/proxy-go/internal/handlers"
 	"github.com/karthikeyaspace/proxy-go/internal/middleware"
+	"golang.org/x/time/rate"
 )
 
 type APIServer struct {
@@ -21,18 +23,18 @@ func NewAPIServer(addr string) *APIServer {
 	}
 }
 
-var (
-	PORT = 8080
-)
+var PORT = 8080
 
 func (s *APIServer) Start() error {
 
 	router := http.NewServeMux()
 	handler := handlers.NewHandler()
 
+	ratelimiter := middleware.NewRateLimiter(rate.Every(10*time.Second), 5) // 5 request per 10 seconds
+
 	router.HandleFunc("GET /", handler.HomeHandler)
-	router.HandleFunc("GET /cached-data", handler.GetDataCached)
-	router.HandleFunc("GET /ratelimit-data", handler.GetDataRatelimited)
+	router.HandleFunc("GET /caching", handler.GetDataCached)
+	router.HandleFunc("GET /ratelimiting", ratelimiter.Ratelimit(http.HandlerFunc(handler.GetDataRatelimited)))
 
 	server := &http.Server{
 		Addr:    s.addr,
